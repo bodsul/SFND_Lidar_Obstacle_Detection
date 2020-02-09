@@ -42,8 +42,18 @@ template<typename PointT>
 std::pair<typename pcl::PointCloud<PointT>::Ptr, typename pcl::PointCloud<PointT>::Ptr> ProcessPointClouds<PointT>::SeparateClouds(pcl::PointIndices::Ptr inliers, typename pcl::PointCloud<PointT>::Ptr cloud) 
 {
   // TODO: Create two new point clouds, one cloud with obstacles and other with segmented plane
-
-    std::pair<typename pcl::PointCloud<PointT>::Ptr, typename pcl::PointCloud<PointT>::Ptr> segResult(cloud, cloud);
+    pcl::ExtractIndices<pcl::PointXYZ> extract;
+    extract.setInputCloud(cloud);
+    extract.setIndices(inliers);
+    extract.setNegative(true);
+    typename pcl::PointCloud<PointT>::Ptr cloud_n(new pcl::PointCloud<PointT>);
+    extract.filter(*cloud_n);
+    typename pcl::PointCloud<PointT>::Ptr cloud_p(new pcl::PointCloud<PointT>);
+    extract.setNegative(false);
+    // for(int index: inliers->indices)
+    //     cloud_p->points.push_back(cloud->points[index]);
+    extract.filter(*cloud_p);
+    std::pair<typename pcl::PointCloud<PointT>::Ptr, typename pcl::PointCloud<PointT>::Ptr> segResult(cloud_n, cloud_p);
     return segResult;
 }
 
@@ -53,9 +63,24 @@ std::pair<typename pcl::PointCloud<PointT>::Ptr, typename pcl::PointCloud<PointT
 {
     // Time segmentation process
     auto startTime = std::chrono::steady_clock::now();
-	pcl::PointIndices::Ptr inliers;
+	pcl::PointIndices::Ptr inliers {new pcl::PointIndices};
     // TODO:: Fill in this function to find inliers for the cloud.
-
+    pcl::ModelCoefficients::Ptr coefficients (new pcl::ModelCoefficients);
+    pcl::SACSegmentation<pcl::PointXYZ> seg;
+    // Optional
+    seg.setOptimizeCoefficients (true);
+    // Mandatory
+    seg.setModelType (pcl::SACMODEL_PLANE);
+    seg.setMethodType (pcl::SAC_RANSAC);
+    seg.setDistanceThreshold (distanceThreshold); 
+    seg.setMaxIterations(maxIterations);
+    seg.setInputCloud (cloud);
+    seg.segment (*inliers, *coefficients);
+    if (inliers->indices.size () == 0)
+    {
+        PCL_ERROR ("Could not estimate a planar model for the given dataset.");
+        exit(1);
+    }
     auto endTime = std::chrono::steady_clock::now();
     auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
     std::cout << "plane segmentation took " << elapsedTime.count() << " milliseconds" << std::endl;
