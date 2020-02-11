@@ -109,7 +109,19 @@ int main (int argc, char** argv)
         std::pair<typename pcl::PointCloud<pcl::PointXYZI>::Ptr, typename pcl::PointCloud<pcl::PointXYZI>::Ptr> segmentPlaneRes = pointProcessorI->SegmentPlane(inputCloudI_filtered, 100, 0.2);
         //renderPointCloud(viewer, segmentPlaneRes.first, std::string("obstacle"), Color(1, 0, 0));
         renderPointCloud(viewer, segmentPlaneRes.second, std::string("ground"), Color(0, 1, 0));
+        std::vector<pcl::PointCloud<pcl::PointXYZI>::Ptr> cloudClusters = pointProcessorI->Clustering(segmentPlaneRes.first, 1.0, 3, 30);
+        int clusterId = 0;
+        std::vector<Color> colors = {Color(1,0,0), Color(1,1,0), Color(0,0,1)};
+        for(pcl::PointCloud<pcl::PointXYZI>::Ptr cluster: cloudClusters)
+        {
+            std::cout << "cluster size ";
+            pointProcessorI->numPoints(cluster);
+            renderPointCloud(viewer, cluster, "obstcloud"+std::to_string(clusterId), colors[clusterId%colors.size()]);
+            Box box= pointProcessorI->BoundingBox(cluster);
+            renderBox(viewer, box, clusterId);
 
+            ++clusterId;
+        }
         streamIterator++;
         if(streamIterator == stream.end())
             streamIterator = stream.begin();
