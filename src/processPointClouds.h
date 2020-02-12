@@ -23,6 +23,7 @@
 #include <algorithm>
 #include <cmath>
 #include "render/box.h"
+#include "quiz/cluster/kdtree.h"
 
 template<typename PointT>
 class ProcessPointClouds {
@@ -63,6 +64,6 @@ public:
 };
 
 std::unordered_set<int> pickSet(int N, int k, std::mt19937& gen);
-std::unordered_set<int> Ransac(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, int maxIterations, float distanceTol);
-std::unordered_set<int> RansacPlane(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, int maxIterations, float distanceTol);
+template<typename PointT> std::unordered_set<int> Ransac(typename pcl::PointCloud<PointT>::Ptr cloud, int maxIterations, float distanceTol);
+template<typename PointT> std::unordered_set<int> RansacPlane(typename pcl::PointCloud<PointT>::Ptr cloud, int maxIterations, float distanceTol);
 #endif /* PROCESSPOINTCLOUDS_H_ */

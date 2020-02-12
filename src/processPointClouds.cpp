@@ -231,7 +231,7 @@ std::pair<typename pcl::PointCloud<PointT>::Ptr, typename pcl::PointCloud<PointT
 {
     // Time segmentation process
     auto startTime = std::chrono::steady_clock::now();
-    std::unordered_set<int> inlier_indices = RansacPlane(cloud, maxIterations, distanceThreshold);
+    std::unordered_set<int> inlier_indices = RansacPlane<PointT>(cloud, maxIterations, distanceThreshold);
     if (inlier_indices.size () == 0)
     {
         std::cout << "Could not estimate a planar model for the given dataset." << std::endl;
@@ -243,7 +243,7 @@ std::pair<typename pcl::PointCloud<PointT>::Ptr, typename pcl::PointCloud<PointT
     auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
     std::cout << "plane segmentation took " << elapsedTime.count() << " milliseconds" << std::endl;
 
-    std::pair<typename pcl::PointCloud<PointT>::Ptr, typename pcl::PointCloud<PointT>::Ptr> segResult = SeparateClouds(inliers,cloud);
+    std::pair<typename pcl::PointCloud<PointT>::Ptr, typename pcl::PointCloud<PointT>::Ptr> segResult = this->SeparateClouds(inliers,cloud);
     return segResult;
 }
 
@@ -256,25 +256,20 @@ std::vector<typename pcl::PointCloud<PointT>::Ptr> ProcessPointCloudsCustom<Poin
     auto startTime = std::chrono::steady_clock::now();
 
     std::vector<typename pcl::PointCloud<PointT>::Ptr> clusters;
+    std::vector<std::vector<float>> points;
+    KdTree* tree = new KdTree;
 
-    // TODO:: Fill in the function to perform euclidean clustering to group detected obstacles
-    typename pcl::search::KdTree<PointT>::Ptr tree(new pcl::search::KdTree<PointT>);
-    tree->setInputCloud(cloud);
-
-    std::vector<pcl::PointIndices> clusterIndices;
-    pcl::EuclideanClusterExtraction<PointT> ec;
-    ec.setClusterTolerance(clusterTolerance);
-    ec.setMinClusterSize(minSize);
-    ec.setMaxClusterSize(maxSize);
-    ec.setSearchMethod(tree);
-    ec.setInputCloud(cloud);
-    ec.extract(clusterIndices);
-
-    for(pcl::PointIndices getIndices: clusterIndices)
+    for (int i =0; i < cloud->points.size(); ++i){
+        PointT point = cloud->points[i];
+        std::vector<float> v_point{point.x, point.y, point.z};
+        points.push_back(v_point);
+        tree->insert(v_point, i);
+    }
+    std::vector<std::vector<int>> cluster_indices = euclideanCluster(points, tree, clusterTolerance);
+    for(std::vector<int> indices: cluster_indices)
     {
         typename pcl::PointCloud<PointT>::Ptr cloudCluster(new pcl::PointCloud<PointT>);
-
-        for(int index: getIndices.indices) cloudCluster->points.push_back(cloud->points[index]);
+        for(int index: indices) cloudCluster->points.push_back(cloud->points[index]);
         cloudCluster->width = cloudCluster->points.size();
         cloudCluster->height = 1;
         cloudCluster->is_dense = true;
@@ -306,7 +301,8 @@ std::unordered_set<int> pickSet(int N, int k, std::mt19937& gen)
     return elems;
 }
 
-std::unordered_set<int> Ransac(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, int maxIterations, float distanceTol)
+template<typename PointT>
+std::unordered_set<int> Ransac(typename pcl::PointCloud<PointT>::Ptr cloud, int maxIterations, float distanceTol)
 {
 	std::unordered_set<int> inliersResult;
 	int max_inliers = 0;
@@ -324,7 +320,7 @@ std::unordered_set<int> Ransac(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, int ma
 	std::vector<int> all_indices(cloud->points.size());
 	std::iota(all_indices.begin(), all_indices.end(), 0);
 	std::vector<int> sample(2);
-	std::vector<pcl::PointXYZ> points(2);
+	std::vector<PointT> points(2);
 
 	for(int j = 0; j < maxIterations; ++ j)
 	{
@@ -342,7 +338,7 @@ std::unordered_set<int> Ransac(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, int ma
 		float distance = std::abs(A*points[0].x + B*points[0].y + C)/std::sqrt(A*A + B*B);
 		// std::cout << "distance!" << distance << std::endl;
 		for(int k = 0; k < cloud->points.size(); ++k){
-			pcl::PointXYZ pt = cloud->points[k];
+			PointT pt = cloud->points[k];
 			float distance = std::abs(A*pt.x + B*pt.y + C)/std::sqrt(A*A + B*B);
 			// if (std::find(std::begin(sample), std::end(sample), k) != sample.end()) std::cout << "distance" << distance << std::endl;
 			if(distance < distanceTol) currResult.insert(k);
@@ -356,7 +352,8 @@ std::unordered_set<int> Ransac(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, int ma
 	return inliersResult;
 }
 
-std::unordered_set<int> RansacPlane(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, int maxIterations, float distanceTol)
+template<typename PointT>
+std::unordered_set<int> RansacPlane(typename pcl::PointCloud<PointT>::Ptr cloud, int maxIterations, float distanceTol)
 {
 	std::unordered_set<int> inliersResult;
 	int max_inliers = 0;
@@ -374,7 +371,7 @@ std::unordered_set<int> RansacPlane(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, i
 	std::vector<int> all_indices(cloud->points.size());
 	std::iota(all_indices.begin(), all_indices.end(), 0);
 	std::vector<int> sample(3);
-	std::vector<pcl::PointXYZ> pts(3);
+	std::vector<PointT> pts(3);
 
 	for(int j = 0; j < maxIterations; ++ j)
 	{
@@ -394,7 +391,7 @@ std::unordered_set<int> RansacPlane(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, i
 		float D = -(A*pts[0].x + B*pts[0].y + C*pts[0].z);
 		float distance = std::abs(A*pts[1].x + B*pts[1].y + C*pts[1].z + D)/std::sqrt(A*A + B*B + C*C);
 		for(int k = 0; k < cloud->points.size(); ++k){
-			pcl::PointXYZ pt = cloud->points[k];
+			PointT pt = cloud->points[k];
 			float distance = std::abs(A*pt.x + B*pt.y + C*pt.z + D)/std::sqrt(A*A + B*B + C*C);
 			if(distance < distanceTol) currResult.insert(k);
 		}
