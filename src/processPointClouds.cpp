@@ -268,6 +268,8 @@ std::vector<typename pcl::PointCloud<PointT>::Ptr> ProcessPointCloudsCustom<Poin
     std::vector<std::vector<int>> cluster_indices = euclideanCluster(points, tree, clusterTolerance);
     for(std::vector<int> indices: cluster_indices)
     {
+        std::cout << "size " << indices.size() << std::endl;
+        if (indices.size() < minSize) continue;
         typename pcl::PointCloud<PointT>::Ptr cloudCluster(new pcl::PointCloud<PointT>);
         for(int index: indices) cloudCluster->points.push_back(cloud->points[index]);
         cloudCluster->width = cloudCluster->points.size();
@@ -275,10 +277,11 @@ std::vector<typename pcl::PointCloud<PointT>::Ptr> ProcessPointCloudsCustom<Poin
         cloudCluster->is_dense = true;
         clusters.push_back(cloudCluster);
     }
+    std::cout << "done" << std::endl;
     auto endTime = std::chrono::steady_clock::now();
     auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
     std::cout << "clustering took " << elapsedTime.count() << " milliseconds and found " << clusters.size() << " clusters" << std::endl;
-
+    delete tree;
     return clusters;
 }
 
