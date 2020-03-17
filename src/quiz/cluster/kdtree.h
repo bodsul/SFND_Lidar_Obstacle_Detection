@@ -2,7 +2,7 @@
 // Quiz on implementing kd tree
 
 #include <cmath>
-#include "../../render/render.h"
+//#include "../../render/render.h"
 
 
 // Structure to represent node of kd tree

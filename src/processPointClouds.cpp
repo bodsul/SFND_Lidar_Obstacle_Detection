@@ -371,8 +371,8 @@ std::unordered_set<int> RansacPlane(typename pcl::PointCloud<PointT>::Ptr cloud,
 	// If distance is smaller than threshold count it as inlier
 
 	// Return indicies of inliers from fitted line with most inliers
-	std::vector<int> all_indices(cloud->points.size());
-	std::iota(all_indices.begin(), all_indices.end(), 0);
+	// std::vector<int> all_indices(cloud->points.size());
+	// std::iota(all_indices.begin(), all_indices.end(), 0);
 	std::vector<int> sample(3);
 	std::vector<PointT> pts(3);
 
